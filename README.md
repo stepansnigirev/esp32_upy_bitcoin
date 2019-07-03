@@ -14,3 +14,5 @@ Also added 2 lines in `micropython/ports/esp32/mpconfigport.h`:
 ```
 
 and then we got two modules: `_ecc` and `hashlib` with all hash functions
+
+Useful doc for user modules: https://micropython.org/resources/docs/en/latest/develop/cmodules.html
