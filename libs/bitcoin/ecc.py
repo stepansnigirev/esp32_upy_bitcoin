@@ -81,7 +81,7 @@ class FieldElement:
         return self.__class__(num, prime)
 
 class PrivateKey(FieldElement):
-    def __init__(self, num, compressed=False, testnet=False):
+    def __init__(self, num, compressed=True, testnet=False):
         super().__init__(num=num, prime=N)
         self.compressed = compressed
         self.testnet = testnet
