@@ -40,7 +40,6 @@ def encode_base58_checksum(s):
 def decode_base58(s, num_bytes=25, strip_leading_zeros=False):
     num = 0
     b = s.encode('ascii')
-    print(b)
     for c in s.encode('ascii'):
         num *= 58
         num += int(BASE58_ALPHABET.index(bytes([c])))
@@ -115,3 +114,6 @@ def h160_to_p2sh_address(h160, prefix=b'\x05'):
     '''Takes a byte sequence hash160 and returns a p2sh address string'''
     # p2sh has a prefix of b'\x05' for mainnet, b'\xc0' for testnet
     return encode_base58_checksum(prefix + h160)
+
+def reverse_bytes(b):
+    return bytes(reversed(b))
