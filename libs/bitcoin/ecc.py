@@ -55,10 +55,10 @@ class PrivateKey:
 
     def sign(self, z):
         k = self.deterministic_k(z)
-        r = (k*G).x
+        r = (G*k).x
         k_inv = pow(k, N-2, N)
         s = (z + r*self.secret) * k_inv % N
-        if s > N/2:
+        if s > HALF_N: # FIXME
             s = N - s
         return Signature(r, s)
 
@@ -140,7 +140,7 @@ class PublicKey:
         res = _ecc.point_add(a,b)
         return PublicKey.parse(res)
 
-    def __rmul__(self, other):
+    def __mul__(self, other):
         if hasattr(other, 'secret'):
             other = other.secret
         res = _ecc.point_multiply(other.to_bytes(32, 'big'), self.sec(compressed=False))
@@ -159,7 +159,7 @@ class PublicKey:
                 return b'\x03' + self.x.to_bytes(32, 'big')
         else:
             return b'\x04' + self.x.to_bytes(32, 'big') \
-                + self.y.to_bytes(32, 'big')    
+                + self.y.to_bytes(32, 'big')
 
     def h160(self, compressed=True):
         return hash160(self.sec(compressed))
@@ -189,7 +189,7 @@ class PublicKey:
         # v = r / s
         v = sig.r * s_inv % N
         # u*G + v*P should have as the x coordinate, r
-        total = u*G + v*self
+        total = G*u + self*v
         return total.x == sig.r
 
     @classmethod
@@ -211,14 +211,14 @@ class Signature:
         return 'Signature({:x},{:x})'.format(self.r, self.s)
 
     def der(self):
-        rbin = self.r.to_bytes(32, byteorder='big')
+        rbin = self.r.to_bytes(32, 'big')
         # remove all null bytes at the beginning
         rbin = rbin.lstrip(b'\x00')
         # if rbin has a high bit, add a \x00
         if rbin[0] & 0x80:
             rbin = b'\x00' + rbin
         result = bytes([2, len(rbin)]) + rbin  # <1>
-        sbin = self.s.to_bytes(32, byteorder='big')
+        sbin = self.s.to_bytes(32, 'big')
         # remove all null bytes at the beginning
         sbin = sbin.lstrip(b'\x00')
         # if sbin has a high bit, add a \x00
@@ -252,6 +252,7 @@ class Signature:
 
 
 N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+HALF_N = 0x8000000000000000000000000000000000000000000000000000000000000000
 G = PublicKey(
     0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798,
     0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8)
