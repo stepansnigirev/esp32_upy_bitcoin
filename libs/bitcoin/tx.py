@@ -105,9 +105,11 @@ class Tx:
         # fee is input sum - output sum
         return input_sum - output_sum
 
-    def sig_hash(self, input_index, script_pubkey=None):
+    def sig_hash(self, input_index, script_pubkey=None, redeem_script=None):
         '''Returns the integer representation of the hash that needs to get
         signed for index input_index'''
+        if not (script_pubkey or redeem_script):
+            raise ValueError("you must supply either script_pubkey or redeem_script")
         # start the serialization with version
         # use int_to_little_endian in 4 bytes
         s = int_to_little_endian(self.version, 4)
@@ -117,7 +119,10 @@ class Tx:
         for i, tx_in in enumerate(self.tx_ins):
             # ScriptSig is the script_pubkey if this index is the one we're signing
             if i == input_index:
-                script_sig = script_pubkey
+                if redeem_script:
+                    script_sig = redeem_script
+                else:
+                    script_sig = script_pubkey
             # Otherwise, the ScriptSig is empty
             else:
                 script_sig = None
@@ -142,10 +147,10 @@ class Tx:
         # convert the result to an integer using int.from_bytes(x, 'big')
         return int.from_bytes(h256, 'big')
 
-    def sign_input(self, input_index, private_key, script_pubkey=None):
+    def sign_input(self, input_index, private_key, script_pubkey=None, redeem_script=None):
         '''Signs the input using the private key'''
         # get the signature hash (z)
-        z = self.sig_hash(input_index, script_pubkey=script_pubkey)
+        z = self.sig_hash(input_index, script_pubkey=script_pubkey, redeem_script=redeem_script)
         # get der signature of z from private key
         der = private_key.sign(z).der()
         # append the SIGHASH_ALL to der (use SIGHASH_ALL.to_bytes(1, 'big'))

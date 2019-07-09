@@ -5,6 +5,7 @@ from binascii import unhexlify
 from bitcoin.tx import Tx, TxIn, TxOut
 from bitcoin.ecc import PrivateKey
 from bitcoin.script import Script
+from bitcoin.helper import encode_varint
 
 from tests.data import fetch_tx
 
@@ -65,16 +66,24 @@ class TxTest(TestCase):
         tx = Tx.parse(stream)
         self.assertEqual(tx.fee(), 140500)
 
-    def test_sig_hash(self):
+    def test_sig_hash_p2pkh(self):
         tx = fetch_tx('452c629d67e41baec3ac6f04fe744b4b9617f8f859c63b3002f8684e7a4fee03')
 
         raw_script_pubkey = unhexlify('1976a914a802fc56c704ce87c42d7c92eb75e7896bdc41ae88ac')
         script_pubkey = Script.parse(BytesIO(raw_script_pubkey))
         want = int('27e0c5994dec7824e56dec6b2fcb342eb7cdb0d0957c2fce9882f715e85d81a6', 16)
-        self.assertEqual(tx.sig_hash(0, script_pubkey), want)
+        self.assertEqual(tx.sig_hash(0, script_pubkey=script_pubkey), want)
+
+    def test_sig_hash_p2sh(self):
+        want = 104533698797560496821845132535319230899254894228014507304915351202849162871356
+        raw_redeem_script = unhexlify("475221022626e955ea6ea6d98850c994f9107b036b1334f18ca8830bfff1295d21cfdb702103b287eaf122eea69030a0e9feed096bed8045c8b98bec453e1ffac7fbdbd4bb7152ae")
+        redeem_script = Script.parse(BytesIO(raw_redeem_script))
+        tx = fetch_tx('46df1a9484d0a81d03ce0ee543ab6e1a23ed06175c104a178268fad381216c2b')
+        sig_hash = tx.sig_hash(0, redeem_script=redeem_script)
+        self.assertEqual(sig_hash, want)
 
     def test_sign_input(self):
         # FIXME: How can we test stuff like this without a script interpreter
         # in the library? Call out to bitcoind somehow?
-        pass
+        raise NotImplementedError()
 

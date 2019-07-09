@@ -17,6 +17,11 @@ def p2pkh_script(h160):
     return Script([0x76, 0xa9, h160, 0x88, 0xac])
 
 
+def p2sh_script(h160):
+    '''Takes a hash160 and returns the p2sh ScriptPubKey'''
+    return Script([0xa9, h160, 0x87])
+
+
 class Script:
 
     def __init__(self, cmds=None):
