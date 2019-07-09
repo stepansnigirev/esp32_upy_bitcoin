@@ -16,9 +16,8 @@ import _ecc
 
 class PrivateKey:
 
-    def __init__(self, secret, compressed=True, testnet=False):
+    def __init__(self, secret, testnet=True):
         self.secret = secret
-        self.compressed = compressed
         self.testnet = testnet
         pk = self.secret.to_bytes(32, 'big')
         sec = _ecc.get_public_key65(pk)
@@ -58,62 +57,12 @@ class PrivateKey:
         r = (G*k).x
         k_inv = pow(k, N-2, N)
         s = (z + r*self.secret) * k_inv % N
-        if s > HALF_N: # FIXME
+        if s*2 > N:
             s = N - s
         return Signature(r, s)
 
-    def wif(self, prefix=None):
-        if prefix is None:
-            if self.testnet:
-                prefix = b'\xef'
-            else:
-                prefix = b'\x80'
-        secret_bytes = self.secret.to_bytes(32, 'big')
-        # append b'\x01' if compressed
-        if self.compressed:
-            suffix = b'\x01'
-        else:
-            suffix = b''
-        return encode_base58_checksum(prefix + secret_bytes + suffix)
-
-    def address(self, prefix=None):
-        if prefix is None:
-            if self.testnet:
-                prefix = b'\x6f'
-            else:
-                prefix = b'\x00'
-        return self.public_key.address(compressed=self.compressed, prefix=prefix)
-
-    def segwit_redeem_script(self):
-        return self.public_key.segwit_redeem_script()
-
-    def segwit_address(self, prefix=None):
-        if prefix is None:
-            if self.testnet:
-                prefix = b'\xc4'
-            else:
-                prefix = b'\x05'
-        return self.public_key.segwit_address(prefix=prefix)
-
-    @classmethod
-    def parse(cls, wif):
-        secret_bytes = decode_base58(
-            wif,
-            num_bytes=40,
-            strip_leading_zeros=True,
-        )
-        # remove the first and last if we have 34, only the first if we have 33
-        testnet = secret_bytes[0] == 0xef
-        if len(secret_bytes) == 34:
-            secret_bytes = secret_bytes[1:-1]
-            compressed = True
-        elif len(secret_bytes) == 33:
-            secret_bytes = secret_bytes[1:]
-            compressed = False
-        else:
-            raise RuntimeError('not valid WIF')
-        secret = int.from_bytes(secret_bytes, 'big')
-        return cls(secret, compressed=compressed, testnet=testnet)
+    def address(self, compressed=True):
+        return self.public_key.address(compressed=compressed, testnet=self.testnet)
 
 
 class PublicKey:
@@ -164,24 +113,21 @@ class PublicKey:
             return b'\x04' + self.x.to_bytes(32, 'big') \
                 + self.y.to_bytes(32, 'big')
 
-    def h160(self, compressed=True):
+    def hash160(self, compressed=True):
         return hash160(self.sec(compressed))
 
     def p2pkh_script(self, compressed=True):
-        h160 = self.h160(compressed)
+        h160 = self.hash160(compressed)
         return p2pkh_script(h160)
 
-    def address(self, compressed=True, prefix=b'\x00'):
+    def address(self, compressed=True, testnet=True):
         '''Returns the address string'''
-        h160 = self.h160(compressed)
+        h160 = self.hash160(compressed)
+        if testnet:
+            prefix = b'\x6f'
+        else:
+            prefix = b'\x00'
         return encode_base58_checksum(prefix + h160)
-
-    def segwit_redeem_script(self):
-        return b'\x16\x00\x14' + self.h160(True)
-
-    def segwit_address(self, prefix=b'\x05'):
-        address_bytes = hash160(self.segwit_redeem_script()[1:])
-        return encode_base58_checksum(prefix + address_bytes)
 
     def verify(self, z, sig):
         # remember sig.r and sig.s are the main things we're checking
@@ -255,7 +201,6 @@ class Signature:
 
 
 N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
-HALF_N = 0x8000000000000000000000000000000000000000000000000000000000000000
 P = 2**256 - 2**32 - 977
 G = PublicKey(
     0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798,
