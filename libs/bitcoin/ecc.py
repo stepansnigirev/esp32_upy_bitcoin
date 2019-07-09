@@ -118,6 +118,9 @@ class PrivateKey:
 
 class PublicKey:
     def __init__(self, x, y):
+        on_curve = pow(y, 2, P) == pow(x, 3, P) + 7
+        if not on_curve:
+            raise ValueError("(x={}, y={}) not on curve".format(x, y))
         self.x = x
         self.y = y
 
@@ -253,6 +256,7 @@ class Signature:
 
 N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 HALF_N = 0x8000000000000000000000000000000000000000000000000000000000000000
+P = 2**256 - 2**32 - 977
 G = PublicKey(
     0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798,
     0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8)
