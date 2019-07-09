@@ -46,14 +46,12 @@ class Script:
     def parse(cls, s):
         # get the length of the entire field
         length = read_varint(s)
-        print("script length:", length)
         # initialize the cmds array
         cmds = []
         # initialize the number of bytes we've read to 0
         count = 0
         # loop until we've read length bytes
         while count < length:
-            print("script cmds:", cmds)
             # get the current byte
             current = s.read(1)
             # increment the bytes we've read

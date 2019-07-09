@@ -97,6 +97,7 @@ class Tx:
         input_sum, output_sum = 0, 0
         # use TxIn.value() to sum up the input amounts
         for tx_in in self.tx_ins:
+            # FIXME: this method doesn't exist
             input_sum += tx_in.value(self.testnet)
         # use TxOut.amount to sum up the output amounts
         for tx_out in self.tx_outs:
@@ -221,7 +222,6 @@ class TxOut:
         '''
         # amount is an integer in 8 bytes, little endian
         amount = little_endian_to_int(s.read(8))
-        print('amount:', amount)
         # use Script.parse to get the ScriptPubKey
         script_pubkey = Script.parse(s)
         # return an instance of the class (see __init__ for args)
