@@ -129,6 +129,15 @@ class Script:
             and type(self.cmds[2]) == bytes and len(self.cmds[2]) == 20 \
             and self.cmds[3] == 0x88 and self.cmds[4] == 0xac
 
+    def is_p2sh_script_pubkey(self):
+        '''Returns whether this follows the
+        OP_HASH160 <20 byte hash> OP_EQUAL pattern.'''
+        # there should be exactly 3 cmds
+        # OP_HASH160 (0xa9), 20-byte hash, OP_EQUAL (0x87)
+        return len(self.cmds) == 3 and self.cmds[0] == 0xa9 \
+            and type(self.cmds[1]) == bytes and len(self.cmds[1]) == 20 \
+            and self.cmds[2] == 0x87
+
     def address(self, testnet=False):
         '''Returns the address corresponding to the script'''
         if self.is_p2pkh_script_pubkey():  # p2pkh
