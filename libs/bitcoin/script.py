@@ -1,6 +1,7 @@
 from binascii import hexlify
 
 from .helper import (
+    encode_bech32_checksum,
     encode_varint,
     h160_to_p2pkh_address,
     h160_to_p2sh_address,
@@ -22,6 +23,29 @@ def p2sh_script(h160):
     return Script([0xa9, h160, 0x87])
 
 
+def p2wpkh_script(h160):
+    '''Takes a hash160 and returns the p2wpkh ScriptPubKey'''
+    return Script([0x00, h160])
+
+
+def address_to_script_pubkey(s):
+    '''Convert address into ScriptPubKey'''
+    # p2pkh
+    if s[:1] in ('1', 'm', 'n'):
+        h160 = decode_base58(s)
+        return p2pkh_script(h160)
+    # p2sh
+    elif s[:1] in ('2', '3'):
+        h160 = decode_base58(s)
+        return p2sh_script(h160)
+    # p2wpkh
+    elif s[:3] in ('bc1', 'tb1'):
+        raw_script = decode_bech32(s)
+        return Script.parse(BytesIO(encode_varstr(raw_script)))
+    else:
+        raise RuntimeError('unknown type of address: {}'.format(s))
+
+
 class Script:
 
     def __init__(self, cmds=None):
@@ -31,18 +55,18 @@ class Script:
             self.cmds = cmds
 
     # FIXME
-    # def __repr__(self):
-        # result = []
-        # for cmd in self.cmds:
-            # if type(cmd) == int:
-                # if OPS.get(cmd):
-                    # name = OPS.get(cmd)
-                # else:
-                    # name = 'OP_[{}]'.format(cmd)
-                # result.append(name)
-            # else:
-                # result.append(hexlify(cmd))
-        # return ' '.join(result)
+    def __repr__(self):
+        result = []
+        for cmd in self.cmds:
+            if type(cmd) == int:
+                if OPS.get(cmd):
+                    name = OPS.get(cmd)
+                else:
+                    name = 'OP_[{}]'.format(cmd)
+                result.append(name)
+            else:
+                result.append(hexlify(cmd).decode())
+        return ' '.join(result)
 
     def __add__(self, other):
         return Script(self.cmds + other.cmds)
@@ -138,6 +162,12 @@ class Script:
             and type(self.cmds[1]) == bytes and len(self.cmds[1]) == 20 \
             and self.cmds[2] == 0x87
 
+    def is_p2wpkh_script_pubkey(self):
+        '''Returns whether this follows the
+        OP_0 <20 byte hash> pattern.'''
+        return len(self.cmds) == 2 and self.cmds[0] == 0x00 \
+            and type(self.cmds[1]) == bytes and len(self.cmds[1]) == 20
+
     def address(self, testnet=False):
         '''Returns the address corresponding to the script'''
         if self.is_p2pkh_script_pubkey():  # p2pkh
@@ -145,5 +175,17 @@ class Script:
             h160 = self.cmds[2]
             # convert to p2pkh address using h160_to_p2pkh_address (remember testnet)
             return h160_to_p2pkh_address(h160, testnet)
-        raise ValueError('Unknown ScriptPubKey')
+        elif self.is_p2sh_script_pubkey():  # p2sh
+            # hash160 is the 2nd element
+            h160 = self.cmds[1]
+            # convert to p2sh address using h160_to_p2sh_address (remember testnet)
+            return h160_to_p2sh_address(h160, testnet)
+        elif self.is_p2wpkh_script_pubkey():  # p2wpkh
+            # witness program is the shole script
+            witness_program = self.raw_serialize()
+            # convert to bech32 address using encode_bech32_checksum
+            return encode_bech32_checksum(witness_program, testnet)
+        else:
+            # only produce addresses for scripts we recognize
+            raise ValueError('Unknown ScriptPubKey')
 
