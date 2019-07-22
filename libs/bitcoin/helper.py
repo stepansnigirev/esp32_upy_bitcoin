@@ -14,6 +14,9 @@ GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
 def hash160(s):
     return hashlib.ripemd160(hashlib.sha256(s).digest()).digest()
 
+def sha256(s):
+    return hashlib.sha256(s).digest()
+
 def double_sha256(s):
     return hashlib.sha256(hashlib.sha256(s).digest()).digest()
 

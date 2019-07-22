@@ -1,11 +1,9 @@
-from helper import sha256
+import os
 
+from bitcoin.helper import sha256
 
-# justin
 def randbits(n):
-    import os
-    return os.getrandbits(n)
-
+    return int.from_bytes(os.urandom(int(n/8)), 'big')
 
 def secure_mnemonic(entropy=0, num_bits=128):
     # if we have more than 128 bits, just mask everything but the last 128 bits
@@ -2076,9 +2074,3 @@ WORD_LIST = [
     'zone',
     'zoo',
 ]
-
-WORD_LOOKUP = {}
-for i, word in enumerate(WORD_LIST):
-    WORD_LOOKUP[word] = i
-    if len(word) > 4:
-        WORD_LOOKUP[word[:4]] = i
