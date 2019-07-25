@@ -7,6 +7,7 @@ import hashlib
 from .helper import (
     decode_base58,
     encode_base58_checksum,
+    encode_bech32_checksum,
     hash160,
     p2pkh_script
 )
@@ -64,6 +65,23 @@ class PrivateKey:
     def address(self, compressed=True):
         return self.public_key.address(compressed=compressed, testnet=self.testnet)
 
+    def wif(self, compressed=True, testnet=False):
+        # convert the secret from integer to a 32-bytes in big endian using num.to_bytes(32, 'big')
+        secret_bytes = self.secret.to_bytes(32, 'big')
+        # prepend b'\xef' on testnet, b'\x80' on mainnet
+        if testnet:
+            prefix = b'\xef'
+        else:
+            prefix = b'\x80'
+        # append b'\x01' if compressed
+        if compressed:
+            suffix = b'\x01'
+        else:
+            suffix = b''
+        # encode_base58_checksum the whole thing
+        return encode_base58_checksum(prefix + secret_bytes + suffix)
+
+
 
 class PublicKey:
     def __init__(self, x, y):
@@ -87,6 +105,8 @@ class PublicKey:
             return 'PublicKey({},{})'.format(self.x, self.y)
 
     def __add__(self, other):
+        if isinstance(other, int):
+            other = G * other
         a = self.sec(compressed=False)
         b = other.sec(compressed=False)
         res = _ecc.point_add(a,b)
@@ -128,6 +148,13 @@ class PublicKey:
         else:
             prefix = b'\x00'
         return encode_base58_checksum(prefix + h160)
+
+    def bech32_address(self, testnet=False):
+        '''Returns the address string'''
+        from bitcoin.script import p2wpkh_script
+        h160 = self.hash160()
+        raw = p2wpkh_script(h160).raw_serialize()
+        return encode_bech32_checksum(raw, testnet)
 
     def verify(self, z, sig):
         # remember sig.r and sig.s are the main things we're checking

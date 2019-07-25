@@ -1,9 +1,21 @@
-import os
 
 from bitcoin.helper import sha256
 
 def randbits(n):
-    return int.from_bytes(os.urandom(int(n/8)), 'big')
+    # FIXME: this works on m5stack, not on unix
+    # from os import urandom
+    # return int.from_bytes(urandom(int(n/8)), 'big')
+
+    # FIXME: this can only handle 32 bits, so I'm calling it 4 times
+    # assumes n is 128
+    assert n == 128, "randbits requires 128 bits for now"
+    from urandom import getrandbits
+    n = 0
+    n += getrandbits(32)
+    n += getrandbits(32) * 2**32
+    n += getrandbits(32) * 2**64
+    n += getrandbits(32) * 2**96
+    return n
 
 def secure_mnemonic(entropy=0, num_bits=128):
     # if we have more than 128 bits, just mask everything but the last 128 bits

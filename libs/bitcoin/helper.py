@@ -43,21 +43,29 @@ def encode_base58_checksum(s):
     return encode_base58(s + double_sha256(s)[:4]).decode('ascii')
 
 
-def decode_base58(s, num_bytes=25, strip_leading_zeros=False):
+def raw_decode_base58(s, num_bytes):
+    if type(s) == str:
+        b = s.encode('ascii')
+    else:
+        b = s
     num = 0
-    b = s.encode('ascii')
-    for c in s.encode('ascii'):
+    for c in b:
         num *= 58
-        num += int(BASE58_ALPHABET.index(bytes([c])))
+        # FIXME: why line below work in lepton, not here .. iteration over bytes produces ints in both cases in py and upy ... but this assumes c is a byte ...
+        # num += BASE58_ALPHABET.index(c)
+
+        num += BASE58_ALPHABET.index(bytes([c]))
     combined = num.to_bytes(num_bytes, 'big')
-    if strip_leading_zeros:
-        while combined[0] == 0:
-            combined = combined[1:]
     checksum = combined[-4:]
     if double_sha256(combined[:-4])[:4] != checksum:
-        raise ValueError('bad address: {} {}'.format(
-            checksum, double_sha256(combined)[:4]))
+        raise ValueError('bad checksum {} != {}'.format(
+            double_sha256(combined[:-4])[:4].hex(), checksum.hex()))
     return combined[:-4]
+
+
+def decode_base58(s):
+    raw = raw_decode_base58(s, 25)
+    return raw[1:]
 
 
 # next four functions are straight from BIP0173:

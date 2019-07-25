@@ -1,6 +1,6 @@
 import hashlib
 import hmac
-from struct import pack
+from ustruct import pack
 
 _0xffffffffL = 0xffffffff
 def isunicode(s):

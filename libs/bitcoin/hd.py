@@ -4,33 +4,33 @@ from hashlib import sha512
 from hmac import HMAC
 from io import BytesIO
 from pbkdf2 import PBKDF2
-from unittest import TestCase
+from binascii import unhexlify
 
-from ecc import S256Point, PrivateKey, N
-from helper import (
+from bitcoin.ecc import PublicKey, PrivateKey, N
+from bitcoin.helper import (
     encode_base58_checksum,
     hash160,
     int_to_little_endian,
     raw_decode_base58,
     sha256,
 )
-from mnemonic import secure_mnemonic, WORD_LIST, WORD_LOOKUP
-from script import p2wpkh_script
+from bitcoin.mnemonic import secure_mnemonic, WORD_LIST
+from bitcoin.script import p2wpkh_script
 
 
 PBKDF2_ROUNDS = 2048
-MAINNET_XPRV = bytes.fromhex('0488ade4')
-MAINNET_YPRV = bytes.fromhex('049d7878')
-MAINNET_ZPRV = bytes.fromhex('04b2430c')
-TESTNET_XPRV = bytes.fromhex('04358394')
-TESTNET_YPRV = bytes.fromhex('044a4e28')
-TESTNET_ZPRV = bytes.fromhex('045f18bc')
-MAINNET_XPUB = bytes.fromhex('0488b21e')
-MAINNET_YPUB = bytes.fromhex('049d7cb2')
-MAINNET_ZPUB = bytes.fromhex('04b24746')
-TESTNET_XPUB = bytes.fromhex('043587cf')
-TESTNET_YPUB = bytes.fromhex('044a5262')
-TESTNET_ZPUB = bytes.fromhex('045f1cf6')
+MAINNET_XPRV = unhexlify('0488ade4')
+MAINNET_YPRV = unhexlify('049d7878')
+MAINNET_ZPRV = unhexlify('04b2430c')
+TESTNET_XPRV = unhexlify('04358394')
+TESTNET_YPRV = unhexlify('044a4e28')
+TESTNET_ZPRV = unhexlify('045f18bc')
+MAINNET_XPUB = unhexlify('0488b21e')
+MAINNET_YPUB = unhexlify('049d7cb2')
+MAINNET_ZPUB = unhexlify('04b24746')
+TESTNET_XPUB = unhexlify('043587cf')
+TESTNET_YPUB = unhexlify('044a5262')
+TESTNET_ZPUB = unhexlify('045f1cf6')
 
 
 class HDPrivateKey:
@@ -44,7 +44,7 @@ class HDPrivateKey:
         self.child_number = child_number
         self.testnet = testnet
         self.pub = HDPublicKey(
-            point=private_key.point,
+            public_key=private_key.public_key,
             chain_code=chain_code,
             depth=depth,
             fingerprint=fingerprint,
@@ -112,7 +112,7 @@ class HDPrivateKey:
             raise ValueError('you need 12, 15, 18, 21, or 24 words')
         number = 0
         for word in words:
-            index = WORD_LOOKUP[word]
+            index = WORD_LIST.index(word)
             number = (number << 11) + index
         # checksum is the last n bits where n = (# of words / 3)
         checksum_bits_length = len(words) // 3
@@ -123,10 +123,12 @@ class HDPrivateKey:
         computed_checksum = sha256(data)[0] >> bits_to_ignore
         if checksum != computed_checksum:
             raise ValueError('words fail checksum: {}'.format(words))
-        normalized_words = []
-        for word in words:
-            normalized_words.append(WORD_LIST[WORD_LOOKUP[word]])
-        normalized_mnemonic = ' '.join(normalized_words)
+        # what does this do?
+        # normalized_words = []
+        # for word in words:
+            # normalized_words.append(WORD_LIST[WORD_LOOKUP[word]])
+        # normalized_mnemonic = ' '.join(normalized_words)
+        normalized_mnemonic = ' '.join(words)
         seed = PBKDF2(
             normalized_mnemonic,
             b'mnemonic' + password,
@@ -179,7 +181,7 @@ class HDPrivateKey:
     def child(self, index, hardened=False):
         if index >= 0x80000000:
             raise ValueError('child number should always be less than 2^31')
-        sec = self.private_key.point.sec()
+        sec = self.private_key.public_key.sec()
         fingerprint = hash160(sec)[:4]
         if hardened:
             index += 0x80000000
@@ -218,9 +220,9 @@ class HDPrivateKey:
 
 class HDPublicKey:
 
-    def __init__(self, point, chain_code, depth, fingerprint,
+    def __init__(self, public_key, chain_code, depth, fingerprint,
                  child_number, testnet=False):
-        self.point = point
+        self.public_key = public_key
         self.chain_code = chain_code
         self.depth = depth
         self.fingerprint = fingerprint
@@ -236,7 +238,7 @@ class HDPublicKey:
         fingerprint = self.fingerprint
         child_number = self.child_number.to_bytes(4, 'big')
         chain_code = self.chain_code
-        sec = self.point.sec()
+        sec = self.public_key.sec()
         return encode_base58_checksum(
             version + depth + fingerprint + child_number +
             chain_code + sec)
@@ -250,7 +252,7 @@ class HDPublicKey:
         fingerprint = self.fingerprint
         child_number = self.child_number.to_bytes(4, 'big')
         chain_code = self.chain_code
-        sec = self.point.sec()
+        sec = self.public_key.sec()
         return encode_base58_checksum(
             version + depth + fingerprint + child_number +
             chain_code + sec)
@@ -275,9 +277,9 @@ class HDPublicKey:
         fingerprint = raw[5:9]
         child_number = int.from_bytes(raw[9:13], 'big')
         chain_code = raw[13:45]
-        point = S256Point.parse(raw[45:])
+        public_key = PublicKey.parse(raw[45:])
         return cls(
-            point=point,
+            public_key=public_key,
             chain_code=chain_code,
             depth=depth,
             fingerprint=fingerprint,
@@ -291,16 +293,16 @@ class HDPublicKey:
     def child(self, index):
         if index >= 0x80000000:
             raise ValueError('child number should always be less than 2^31')
-        sec = self.point.sec()
+        sec = self.public_key.sec()
         data = sec + index.to_bytes(4, 'big')
         raw = HMAC(key=self.chain_code, msg=data, digestmod=sha512).digest()
-        point = self.point + int.from_bytes(raw[:32], 'big')
+        public_key = self.public_key + int.from_bytes(raw[:32], 'big')
         chain_code = raw[32:]
         depth = self.depth + 1
         fingerprint = hash160(sec)[:4]
         child_number = index
         return HDPublicKey(
-            point=point,
+            public_key=public_key,
             chain_code=chain_code,
             depth=depth,
             fingerprint=fingerprint,
@@ -312,10 +314,10 @@ class HDPublicKey:
         return p2wpkh_script(self.hash160())
 
     def hash160(self):
-        return self.point.hash160()
+        return self.public_key.hash160()
 
     def address(self):
-        return self.point.address(testnet=self.testnet)
+        return self.public_key.address(testnet=self.testnet)
 
     def bech32_address(self):
-        return self.point.bech32_address(testnet=self.testnet)
+        return self.public_key.bech32_address(testnet=self.testnet)
