@@ -168,6 +168,12 @@ class Script:
         return len(self.cmds) == 2 and self.cmds[0] == 0x00 \
             and type(self.cmds[1]) == bytes and len(self.cmds[1]) == 20
 
+    def is_p2wsh_script_pubkey(self):
+        '''Returns whether this follows the
+        OP_0 <32 byte hash> pattern.'''
+        return len(self.cmds) == 2 and self.cmds[0] == 0x00 \
+            and type(self.cmds[1]) == bytes and len(self.cmds[1]) == 32
+
     def address(self, testnet=False):
         '''Returns the address corresponding to the script'''
         if self.is_p2pkh_script_pubkey():  # p2pkh

@@ -240,7 +240,7 @@ class Tx:
                         redeem_script=None, witness_script=None):
         '''Returns the integer representation of the hash that needs to get
         signed for index input_index'''
-        if not script_pubkey or redeem_script or witness_script:
+        if not (script_pubkey or redeem_script or witness_script):
             raise RuntimeError('No script supplied to sig_hash_bip143')
         tx_in = self.tx_ins[input_index]
         # per BIP143 spec
@@ -300,20 +300,16 @@ class Tx:
         # set the witness
         self.tx_ins[input_index].witness = [sig, sec]
 
-    def sign_input(self, input_index, private_key, script_pubkey=None, 
-                   redeem_script=None, input_value=None):
-        '''Signs the input using the private key according to transaction type'''
-        if script_pubkey.is_p2pkh_script_pubkey():
-            self.sign_input_p2pkh(input_index, private_key, script_pubkey)
-        elif script_pubkey.is_p2sh_script_pubkey():
-            self.sign_input_p2sh(input_index, private_key, redeem_script)
-        elif script_pubkey.is_p2wpkh_script_pubkey():
-            assert input_value is not None, "input value needed for segwit signature"
-            self.sign_input_p2wpkh(input_index, input_value, private_key, script_pubkey)
-        else:
-            raise ValueError('unknown input type')
-        # jimmy verifies input here. we can do this on desktop.
-        return
+    def sign_input_p2wsh(self, input_index, input_value, private_key, witness_script):
+        '''Signs the input using the private key'''
+        # get the sig_hash (z)
+        z = self.sig_hash_bip143(input_index, input_value, witness_script=witness_script)
+        # get der signature of z from private key
+        der = private_key.sign(z).der()
+        # append the hash_type to der
+        sig = der + SIGHASH_ALL.to_bytes(1, 'big')
+        # witness is signature + witness script
+        self.tx_ins[input_index].witness = [sig, witness_script.raw_serialize()]
 
 
 class TxIn:

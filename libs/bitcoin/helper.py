@@ -186,6 +186,9 @@ def encode_varint(i):
     else:
         raise ValueError('integer too large: {}'.format(i))
 
+def encode_varstr(b):
+    return encode_varint(len(b)) + b
+
 def flip_endian(h):
     '''flip_endian takes a hex string and flips the endianness
     Returns a hexadecimal string
