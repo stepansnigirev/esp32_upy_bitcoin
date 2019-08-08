@@ -14,10 +14,11 @@ from .ili934 import color565
 from . import pins
 
 class LCD(ili934.ILI9341):
-    def __init__(self):
+    def __init__(self, spi=None):
         self.power = Pin(pins.TFT_LED_PIN, Pin.OUT)
         self.power.value(1)
-        spi = SPI(2, baudrate=40000000, miso=Pin(pins.TFT_MISO_PIN), mosi=Pin(pins.TFT_MOSI_PIN), sck=Pin(pins.TFT_CLK_PIN))
+        if spi is None:
+            spi = SPI(2, baudrate=40000000, miso=Pin(pins.M5_MISO_PIN), mosi=Pin(pins.M5_MOSI_PIN), sck=Pin(pins.M5_CLK_PIN))
         cs=Pin(pins.TFT_CS_PIN)
         dc=Pin(pins.TFT_DC_PIN)
         rst=Pin(pins.TFT_RST_PIN)

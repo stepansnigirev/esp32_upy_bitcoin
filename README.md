@@ -77,6 +77,26 @@ lcd.print(pk.address())
 
 ```
 
+## Example - show list of files on the SD card
+
+```py
+from m5stack import LCD, fonts, color565
+from m5stack import SDCard
+import os
+
+lcd = LCD()
+lcd.set_font(fonts.tt24)
+lcd.set_color(color565(0,50,250), color565(255,255,255)) # text color, background color
+lcd.erase()
+
+sd = SDCard()
+os.mount(sd, '/sd')
+files = os.listdir('/sd')
+for file in files:
+	lcd.print(file)
+os.umount('/sd')
+```
+
 ## Reference
 
 - [Useful doc for user modules](https://micropython.org/resources/docs/en/latest/develop/cmodules.html)
