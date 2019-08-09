@@ -172,7 +172,7 @@ class ILI9341:
         y = min(self.height - 1, max(0, y))
         w = min(self.width - x, max(1, w))
         h = min(self.height - y, max(1, h))
-        if color:
+        if color is not None:
             color = ustruct.pack(">H", color)
         else:
             color = self._colormap[0:2] #background

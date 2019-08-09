@@ -4,3 +4,6 @@
 [submodule "usermods/mpy-bitcoin"]
 	path = usermods/mpy-bitcoin
 	url = git@github.com:stepansnigirev/mpy-bitcoin.git
+[submodule "usermods/mpy-qrencode"]
+	path = usermods/mpy-qrencode
+	url = https://github.com/stepansnigirev/mpy-qrencode
